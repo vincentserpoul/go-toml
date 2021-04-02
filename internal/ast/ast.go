@@ -11,7 +11,7 @@ import (
 // it := n.Children()
 // for it.Next() {
 // 		it.Node()
-// }
+// }.
 type Iterator struct {
 	started bool
 	node    Node
@@ -60,7 +60,7 @@ func (r *Root) at(idx int) Node {
 // rest make a potentially dotted key.
 // Table and Array table have one child per element of the key they
 // represent (same as KeyValue, but without the last node being the value).
-// children []Node
+// children []Node.
 type Node struct {
 	Kind Kind
 	Data []byte // Raw bytes from the input

@@ -712,6 +712,7 @@ type Integer484 struct {
 func (i Integer484) MarshalText() ([]byte, error) {
 	return []byte(strconv.Itoa(i.Value)), nil
 }
+
 func (i *Integer484) UnmarshalText(data []byte) error {
 	conv, err := strconv.Atoi(string(data))
 	if err != nil {
@@ -735,8 +736,10 @@ func TestIssue484(t *testing.T) {
 	}, cfg)
 }
 
-type Map458 map[string]interface{}
-type Slice458 []interface{}
+type (
+	Map458   map[string]interface{}
+	Slice458 []interface{}
+)
 
 func (m Map458) A(s string) Slice458 {
 	return m[s].([]interface{})
@@ -755,7 +758,8 @@ version = "0.1.0"`)
 		map[string]interface{}{
 			"dependencies": []interface{}{"regex"},
 			"name":         "decode",
-			"version":      "0.1.0"},
+			"version":      "0.1.0",
+		},
 	}
 	assert.Equal(t, expected, a)
 }
@@ -766,7 +770,7 @@ func TestIssue252(t *testing.T) {
 		Val2 string `toml:"val2"`
 	}
 
-	var configFile = []byte(
+	configFile := []byte(
 		`
 val1 = "test1"
 `)

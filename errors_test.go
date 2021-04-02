@@ -125,7 +125,8 @@ before `, "highlighted", ``},
 		},
 		{
 			desc: "handle empty lines in the before/after blocks",
-			doc: [3]string{`line1
+			doc: [3]string{
+				`line1
 
 line 2
 before `, "highlighted", ` after

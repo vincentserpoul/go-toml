@@ -16,15 +16,17 @@ func scanFollows(pattern []byte) func(b []byte) bool {
 	}
 }
 
-var scanFollowsMultilineBasicStringDelimiter = scanFollows([]byte{'"', '"', '"'})
-var scanFollowsMultilineLiteralStringDelimiter = scanFollows([]byte{'\'', '\'', '\''})
-var scanFollowsTrue = scanFollows([]byte{'t', 'r', 'u', 'e'})
-var scanFollowsFalse = scanFollows([]byte{'f', 'a', 'l', 's', 'e'})
-var scanFollowsInf = scanFollows([]byte{'i', 'n', 'f'})
-var scanFollowsNan = scanFollows([]byte{'n', 'a', 'n'})
+var (
+	scanFollowsMultilineBasicStringDelimiter   = scanFollows([]byte{'"', '"', '"'})
+	scanFollowsMultilineLiteralStringDelimiter = scanFollows([]byte{'\'', '\'', '\''})
+	scanFollowsTrue                            = scanFollows([]byte{'t', 'r', 'u', 'e'})
+	scanFollowsFalse                           = scanFollows([]byte{'f', 'a', 'l', 's', 'e'})
+	scanFollowsInf                             = scanFollows([]byte{'i', 'n', 'f'})
+	scanFollowsNan                             = scanFollows([]byte{'n', 'a', 'n'})
+)
 
 func scanUnquotedKey(b []byte) ([]byte, []byte, error) {
-	//unquoted-key = 1*( ALPHA / DIGIT / %x2D / %x5F ) ; A-Z / a-z / 0-9 / - / _
+	// unquoted-key = 1*( ALPHA / DIGIT / %x2D / %x5F ) ; A-Z / a-z / 0-9 / - / _
 	for i := 0; i < len(b); i++ {
 		if !isUnquotedKeyChar(b[i]) {
 			return b[:i], b[i:], nil
@@ -38,9 +40,9 @@ func isUnquotedKeyChar(r byte) bool {
 }
 
 func scanLiteralString(b []byte) ([]byte, []byte, error) {
-	//literal-string = apostrophe *literal-char apostrophe
-	//apostrophe = %x27 ; ' apostrophe
-	//literal-char = %x09 / %x20-26 / %x28-7E / non-ascii
+	// literal-string = apostrophe *literal-char apostrophe
+	// apostrophe = %x27 ; ' apostrophe
+	// literal-char = %x09 / %x20-26 / %x28-7E / non-ascii
 	for i := 1; i < len(b); i++ {
 		switch b[i] {
 		case '\'':
@@ -115,11 +117,11 @@ func scanComment(b []byte) ([]byte, []byte, error) {
 
 // TODO perform validation on the string?
 func scanBasicString(b []byte) ([]byte, []byte, error) {
-	//basic-string = quotation-mark *basic-char quotation-mark
-	//quotation-mark = %x22            ; "
-	//basic-char = basic-unescaped / escaped
-	//basic-unescaped = wschar / %x21 / %x23-5B / %x5D-7E / non-ascii
-	//escaped = escape escape-seq-char
+	// basic-string = quotation-mark *basic-char quotation-mark
+	// quotation-mark = %x22            ; "
+	// basic-char = basic-unescaped / escaped
+	// basic-unescaped = wschar / %x21 / %x23-5B / %x5D-7E / non-ascii
+	// escaped = escape escape-seq-char
 	for i := 1; i < len(b); i++ {
 		switch b[i] {
 		case '"':

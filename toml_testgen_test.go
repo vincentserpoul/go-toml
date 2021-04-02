@@ -368,7 +368,7 @@ func TestValidCommentsEverywhere(t *testing.T) {
 [group] # Comment
 answer = 42 # Comment
 # no-extraneous-keys-please = 999
-# Inbetween comment.
+# Between comment.
 more = [ # Comment
   # What about multiple # comments?
   # Can you handle it?

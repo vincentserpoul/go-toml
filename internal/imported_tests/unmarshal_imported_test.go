@@ -218,11 +218,13 @@ type testSubDoc struct {
 	unexported int    `toml:"shouldntBeHere"`
 }
 
-var biteMe = "Bite me"
-var float1 float32 = 12.3
-var float2 float32 = 45.6
-var float3 float32 = 78.9
-var subdoc = testSubDoc{"Second", 0}
+var (
+	biteMe         = "Bite me"
+	float1 float32 = 12.3
+	float2 float32 = 45.6
+	float3 float32 = 78.9
+	subdoc         = testSubDoc{"Second", 0}
+)
 
 var docData = testDoc{
 	Title:       "TOML Marshal Testing",
@@ -375,7 +377,7 @@ var intErrTomls = []string{
 }
 
 func TestErrUnmarshal(t *testing.T) {
-	var errTomls = []string{
+	errTomls := []string{
 		"bool = truly\ndate = 1979-05-27T07:32:00Z\nfloat = 123.4\nint = 5000\nstring = \"Bite me\"",
 		"bool = true\ndate = 1979-05-27T07:3200Z\nfloat = 123.4\nint = 5000\nstring = \"Bite me\"",
 		"bool = true\ndate = 1979-05-27T07:32:00Z\nfloat = 123a4\nint = 5000\nstring = \"Bite me\"",
@@ -461,7 +463,7 @@ func TestEmptyUnmarshalOmit(t *testing.T) {
 		Map        map[string]string       `toml:"map,omitempty"`
 	}
 
-	var emptyTestData2 = emptyMarshalTestStruct2{
+	emptyTestData2 := emptyMarshalTestStruct2{
 		Title:      "Placeholder",
 		Bool:       false,
 		Int:        0,
@@ -489,21 +491,23 @@ type pointerMarshalTestStruct struct {
 	DblPtr    *[]*[]*string
 }
 
-var pointerStr = "Hello"
-var pointerList = []string{"Hello back"}
-var pointerListPtr = []*string{&pointerStr}
-var pointerMap = map[string]string{"response": "Goodbye"}
-var pointerMapPtr = map[string]*string{"alternate": &pointerStr}
-var pointerTestData = pointerMarshalTestStruct{
-	Str:       &pointerStr,
-	List:      &pointerList,
-	ListPtr:   &pointerListPtr,
-	Map:       &pointerMap,
-	MapPtr:    &pointerMapPtr,
-	EmptyStr:  nil,
-	EmptyList: nil,
-	EmptyMap:  nil,
-}
+var (
+	pointerStr      = "Hello"
+	pointerList     = []string{"Hello back"}
+	pointerListPtr  = []*string{&pointerStr}
+	pointerMap      = map[string]string{"response": "Goodbye"}
+	pointerMapPtr   = map[string]*string{"alternate": &pointerStr}
+	pointerTestData = pointerMarshalTestStruct{
+		Str:       &pointerStr,
+		List:      &pointerList,
+		ListPtr:   &pointerListPtr,
+		Map:       &pointerMap,
+		MapPtr:    &pointerMapPtr,
+		EmptyStr:  nil,
+		EmptyList: nil,
+		EmptyMap:  nil,
+	}
+)
 
 var pointerTestToml = []byte(`List = ["Hello back"]
 ListPtr = ["Hello"]
@@ -531,15 +535,17 @@ func TestUnmarshalTypeMismatch(t *testing.T) {
 
 type nestedMarshalTestStruct struct {
 	String [][]string
-	//Struct [][]basicMarshalTestSubStruct
+	// Struct [][]basicMarshalTestSubStruct
 	StringPtr *[]*[]*string
 	// StructPtr *[]*[]*basicMarshalTestSubStruct
 }
 
-var str1 = "Three"
-var str2 = "Four"
-var strPtr = []*string{&str1, &str2}
-var strPtr2 = []*[]*string{&strPtr}
+var (
+	str1    = "Three"
+	str2    = "Four"
+	strPtr  = []*string{&str1, &str2}
+	strPtr2 = []*[]*string{&strPtr}
+)
 
 var nestedTestData = nestedMarshalTestStruct{
 	String:    [][]string{{"Five", "Six"}, {"One", "Two"}},
@@ -572,15 +578,19 @@ func (c customMarshaler) MarshalTOML() ([]byte, error) {
 	return []byte(fullName), nil
 }
 
-var customMarshalerData = customMarshaler{FirstName: "Sally", LastName: "Fields"}
-var customMarshalerToml = []byte(`Sally Fields`)
-var nestedCustomMarshalerData = customMarshalerParent{
-	Self:    customMarshaler{FirstName: "Maiku", LastName: "Suteda"},
-	Friends: []customMarshaler{customMarshalerData},
-}
+var (
+	customMarshalerData       = customMarshaler{FirstName: "Sally", LastName: "Fields"}
+	customMarshalerToml       = []byte(`Sally Fields`)
+	nestedCustomMarshalerData = customMarshalerParent{
+		Self:    customMarshaler{FirstName: "Maiku", LastName: "Suteda"},
+		Friends: []customMarshaler{customMarshalerData},
+	}
+)
+
 var nestedCustomMarshalerToml = []byte(`friends = ["Sally Fields"]
 me = "Maiku Suteda"
 `)
+
 var nestedCustomMarshalerTomlForUnmarshal = []byte(`[friends]
 FirstName = "Sally"
 LastName = "Fields"`)
@@ -607,11 +617,11 @@ func (m textMarshaler) MarshalText() ([]byte, error) {
 }
 
 func TestUnmarshalTextMarshaler(t *testing.T) {
-	var nested = struct {
+	nested := struct {
 		Friends textMarshaler `toml:"friends"`
 	}{}
 
-	var expected = struct {
+	expected := struct {
 		Friends textMarshaler `toml:"friends"`
 	}{
 		Friends: textMarshaler{FirstName: "Sally", LastName: "Fields"},
@@ -713,6 +723,7 @@ var mapsTestData = mapsTestStruct{
 		},
 	},
 }
+
 var mapsTestToml = []byte(`
 [Other]
   "testing" = 3.9999
@@ -835,6 +846,7 @@ var testDocBasicToml = []byte(`
 type testDocCustomTag struct {
 	Doc testDocBasicsCustomTag `file:"document"`
 }
+
 type testDocBasicsCustomTag struct {
 	Bool       bool      `file:"bool_val"`
 	Date       time.Time `file:"date_val"`
@@ -1308,7 +1320,6 @@ func TestUnmarshalPreservesUnexportedFields(t *testing.T) {
 	t.Run("unexported field should not be set from toml", func(t *testing.T) {
 		var actual unexportedFieldPreservationTest
 		err := toml.Unmarshal([]byte(doc), &actual)
-
 		if err != nil {
 			t.Fatal("did not expect an error")
 		}
@@ -1342,7 +1353,6 @@ func TestUnmarshalPreservesUnexportedFields(t *testing.T) {
 			Nested3:    &unexportedFieldPreservationTestNested{"baz", "bax"},
 		}
 		err := toml.Unmarshal([]byte(doc), &actual)
-
 		if err != nil {
 			t.Fatal("did not expect an error")
 		}
@@ -1574,7 +1584,7 @@ func TestUnmarshalPreservesUnexportedFields(t *testing.T) {
 //	}
 //}
 
-// test case for issue #339
+// test case for issue #339.
 func TestUnmarshalSameInnerField(t *testing.T) {
 	type InterStruct2 struct {
 		Test string
@@ -2089,7 +2099,7 @@ func TestTextUnmarshalError(t *testing.T) {
 	}
 }
 
-// issue406
+// issue406.
 func TestPreserveNotEmptyField(t *testing.T) {
 	doc := []byte(`Field1 = "ccc"`)
 	type Inner struct {
@@ -2130,7 +2140,7 @@ func TestPreserveNotEmptyField(t *testing.T) {
 	}
 }
 
-// github issue 432
+// github issue 432.
 func TestUnmarshalEmptyInterface(t *testing.T) {
 	doc := []byte(`User = "pelletier"`)
 
@@ -2218,8 +2228,7 @@ func (d *durationString) UnmarshalTOML(v interface{}) error {
 	return nil
 }
 
-type config437Error struct {
-}
+type config437Error struct{}
 
 func (e *config437Error) UnmarshalTOML(v interface{}) error {
 	return errors.New("expected")

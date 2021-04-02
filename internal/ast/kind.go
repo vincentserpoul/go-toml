@@ -5,21 +5,21 @@ import "fmt"
 type Kind int
 
 const (
-	// meta
+	// meta.
 	Invalid Kind = iota
 	Comment
 	Key
 
-	// top level structures
+	// top level structures.
 	Table
 	ArrayTable
 	KeyValue
 
-	// containers values
+	// containers values.
 	Array
 	InlineTable
 
-	// values
+	// values.
 	String
 	Bool
 	Float

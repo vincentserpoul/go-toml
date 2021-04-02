@@ -156,8 +156,10 @@ func ensureValueIndexable(t target) error {
 	return nil
 }
 
-var sliceInterfaceType = reflect.TypeOf([]interface{}{})
-var mapStringInterfaceType = reflect.TypeOf(map[string]interface{}{})
+var (
+	sliceInterfaceType     = reflect.TypeOf([]interface{}{})
+	mapStringInterfaceType = reflect.TypeOf(map[string]interface{}{})
+)
 
 func setString(t target, v string) error {
 	f := t.get()
@@ -185,8 +187,10 @@ func setBool(t target, v bool) error {
 	}
 }
 
-const maxInt = int64(^uint(0) >> 1)
-const minInt = -maxInt - 1
+const (
+	maxInt = int64(^uint(0) >> 1)
+	minInt = -maxInt - 1
+)
 
 func setInt64(t target, v int64) error {
 	f := t.get()

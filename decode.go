@@ -296,5 +296,7 @@ func isDigitRune(r rune) bool {
 	return r >= '0' && r <= '9'
 }
 
-var errInvalidUnderscore = errors.New("invalid use of _ in number")
-var errInvalidUnderscoreHex = errors.New("invalid use of _ in hex number")
+var (
+	errInvalidUnderscore    = errors.New("invalid use of _ in number")
+	errInvalidUnderscoreHex = errors.New("invalid use of _ in hex number")
+)

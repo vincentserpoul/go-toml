@@ -273,7 +273,7 @@ func (dt LocalDateTime) MarshalText() ([]byte, error) {
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
-// The datetime is expected to be a string in a format accepted by ParseLocalDateTime
+// The datetime is expected to be a string in a format accepted by ParseLocalDateTime.
 func (dt *LocalDateTime) UnmarshalText(data []byte) error {
 	var err error
 	*dt, err = ParseLocalDateTime(string(data))

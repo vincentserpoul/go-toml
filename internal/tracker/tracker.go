@@ -99,6 +99,7 @@ func (s *Seen) CheckExpression(node ast.Node) error {
 	}
 	return nil
 }
+
 func (s *Seen) checkTable(node ast.Node) error {
 	s.current = s.root
 
