@@ -50,7 +50,7 @@ func (e *DecodeError) String() string {
 	return e.human
 }
 
-/// Position returns the (line, column) pair indicating where the error
+// Position returns the (line, column) pair indicating where the error
 // occurred in the document. Positions are 1-indexed.
 func (e *DecodeError) Position() (row int, column int) {
 	return e.line, e.column
@@ -95,16 +95,21 @@ func wrapDecodeError(document []byte, de *decodeError) error {
 	if len(before) > 0 {
 		buf.Write(before[0])
 	}
+
 	buf.Write(de.highlight)
+
 	if len(after) > 0 {
 		buf.Write(after[0])
 	}
+
 	buf.WriteRune('\n')
 	buf.WriteString(strings.Repeat(" ", lineColumnWidth))
 	buf.WriteString("| ")
+
 	if len(before) > 0 {
 		buf.WriteString(strings.Repeat(" ", len(before[0])))
 	}
+
 	buf.WriteString(strings.Repeat("~", len(de.highlight)))
 	buf.WriteString(" ")
 	buf.WriteString(err.message)
@@ -123,50 +128,67 @@ func wrapDecodeError(document []byte, de *decodeError) error {
 
 func formatLineNumber(line int, width int) string {
 	format := "%" + strconv.Itoa(width) + "d"
+
 	return fmt.Sprintf(format, line)
 }
 
 func linesOfContext(document []byte, highlight []byte, offset int, linesAround int) ([][]byte, [][]byte) {
+	return beforeLines(document, offset, linesAround), afterLines(document, highlight, offset, linesAround)
+}
+
+func beforeLines(document []byte, offset int, linesAround int) [][]byte {
 	var beforeLines [][]byte
 
-	// Walk the document in reverse from the highlight to find previous lines
+	// Walk the document backward from the highlight to find previous lines
 	// of context.
 	rest := document[:offset]
+backward:
 	for o := len(rest) - 1; o >= 0 && len(beforeLines) <= linesAround && len(rest) > 0; {
-		if rest[o] == '\n' {
+		switch {
+		case rest[o] == '\n':
 			// handle individual lines
 			beforeLines = append(beforeLines, rest[o+1:])
 			rest = rest[:o]
 			o = len(rest) - 1
-		} else if o == 0 {
+		case o == 0:
 			// add the first line only if it's non-empty
 			beforeLines = append(beforeLines, rest)
-			break
-		} else {
+
+			break backward
+		default:
 			o--
 		}
 	}
 
+	return beforeLines
+}
+
+func afterLines(document []byte, highlight []byte, offset int, linesAround int) [][]byte {
 	var afterLines [][]byte
 
 	// Walk the document forward from the highlight to find the following
 	// lines of context.
-	rest = document[offset+len(highlight):]
+	rest := document[offset+len(highlight):]
+forward:
 	for o := 0; o < len(rest) && len(afterLines) <= linesAround; {
-		if rest[o] == '\n' {
+		switch {
+		case rest[o] == '\n':
 			// handle individual lines
 			afterLines = append(afterLines, rest[:o])
 			rest = rest[o+1:]
 			o = 0
-		} else if o == len(rest)-1 && o > 0 {
+
+		case o == len(rest)-1 && o > 0:
 			// add last line only if it's non-empty
 			afterLines = append(afterLines, rest)
-			break
-		} else {
+
+			break forward
+		default:
 			o++
 		}
 	}
-	return beforeLines, afterLines
+
+	return afterLines
 }
 
 func positionAtEnd(b []byte) (row int, column int) {
