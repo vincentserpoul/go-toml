@@ -22,6 +22,7 @@ func parseInteger(b []byte) (int64, error) {
 			return 0, newDecodeError(b[1:2], "invalid base: '%c'", b[1])
 		}
 	}
+
 	return parseIntDec(b)
 }
 
@@ -47,6 +48,7 @@ func parseLocalDate(b []byte) (LocalDate, error) {
 	if err != nil {
 		return date, err
 	}
+
 	date.Month = time.Month(v)
 
 	date.Day, err = parseDecimalDigits(b[8:10])
@@ -66,9 +68,11 @@ func parseDecimalDigits(b []byte) (int, error) {
 		if !isDigit(c) {
 			return 0, fmt.Errorf("%s: %w", b, ErrNotDigit)
 		}
+
 		v *= 10
 		v += int(c - '0')
 	}
+
 	return v, nil
 }
 
@@ -151,6 +155,7 @@ func parseLocalDateTime(b []byte) (LocalDateTime, []byte, error) {
 	if err != nil {
 		return dt, nil, err
 	}
+
 	dt.Date = date
 
 	sep := b[localDateTimeByteLen-1]
@@ -162,6 +167,7 @@ func parseLocalDateTime(b []byte) (LocalDateTime, []byte, error) {
 	if err != nil {
 		return dt, nil, err
 	}
+
 	dt.Time = t
 
 	return dt, rest, nil
@@ -182,6 +188,7 @@ func parseLocalTime(b []byte) (LocalTime, []byte, error) {
 	}
 
 	var err error
+
 	t.Hour, err = parseDecimalDigits(b[0:2])
 	if err != nil {
 		return t, nil, err
@@ -190,6 +197,7 @@ func parseLocalTime(b []byte) (LocalTime, []byte, error) {
 	if b[2] != ':' {
 		return t, nil, newDecodeError(b[2:3], "expecting colon between hours and minutes")
 	}
+
 	t.Minute, err = parseDecimalDigits(b[3:5])
 	if err != nil {
 		return t, nil, err
@@ -198,6 +206,7 @@ func parseLocalTime(b []byte) (LocalTime, []byte, error) {
 	if b[5] != ':' {
 		return t, nil, newDecodeError(b[5:6], "expecting colon between minutes and seconds")
 	}
+
 	t.Second, err = parseDecimalDigits(b[6:8])
 	if err != nil {
 		return t, nil, err
@@ -228,8 +237,8 @@ func parseFloat(b []byte) (float64, error) {
 	}
 
 	tok := string(b)
-	err := numberContainsInvalidUnderscore(tok)
-	if err != nil {
+
+	if err := numberContainsInvalidUnderscore(tok); err != nil {
 		return 0, err
 	}
 
@@ -241,46 +250,51 @@ func parseFloat(b []byte) (float64, error) {
 	if cleanedVal[len(cleanedVal)-1] == '.' {
 		return 0, ErrParseFloatEndDot
 	}
+
 	return strconv.ParseFloat(cleanedVal, 64)
 }
 
 func parseIntHex(b []byte) (int64, error) {
 	tok := string(b)
 	cleanedVal := cleanupNumberToken(tok)
-	err := hexNumberContainsInvalidUnderscore(cleanedVal)
-	if err != nil {
+
+	if err := hexNumberContainsInvalidUnderscore(cleanedVal); err != nil {
 		return 0, err
 	}
+
 	return strconv.ParseInt(cleanedVal[2:], 16, 64)
 }
 
 func parseIntOct(b []byte) (int64, error) {
 	tok := string(b)
 	cleanedVal := cleanupNumberToken(tok)
-	err := numberContainsInvalidUnderscore(cleanedVal)
-	if err != nil {
+
+	if err := numberContainsInvalidUnderscore(cleanedVal); err != nil {
 		return 0, err
 	}
+
 	return strconv.ParseInt(cleanedVal[2:], 8, 64)
 }
 
 func parseIntBin(b []byte) (int64, error) {
 	tok := string(b)
 	cleanedVal := cleanupNumberToken(tok)
-	err := numberContainsInvalidUnderscore(cleanedVal)
-	if err != nil {
+
+	if err := numberContainsInvalidUnderscore(cleanedVal); err != nil {
 		return 0, err
 	}
+
 	return strconv.ParseInt(cleanedVal[2:], 2, 64)
 }
 
 func parseIntDec(b []byte) (int64, error) {
 	tok := string(b)
 	cleanedVal := cleanupNumberToken(tok)
-	err := numberContainsInvalidUnderscore(cleanedVal)
-	if err != nil {
+
+	if err := numberContainsInvalidUnderscore(cleanedVal); err != nil {
 		return 0, err
 	}
+
 	return strconv.ParseInt(cleanedVal, 10, 64)
 }
 
@@ -297,8 +311,10 @@ func numberContainsInvalidUnderscore(value string) error {
 				return errInvalidUnderscore
 			}
 		}
+
 		hasBefore = isDigitRune(r)
 	}
+
 	return nil
 }
 
@@ -312,13 +328,16 @@ func hexNumberContainsInvalidUnderscore(value string) error {
 				return errInvalidUnderscoreHex
 			}
 		}
+
 		hasBefore = isHexDigit(r)
 	}
+
 	return nil
 }
 
 func cleanupNumberToken(value string) string {
 	cleanedVal := strings.ReplaceAll(value, "_", "")
+
 	return cleanedVal
 }
 
