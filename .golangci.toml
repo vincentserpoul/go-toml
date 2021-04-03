@@ -63,7 +63,7 @@ enable = [
     "staticcheck",
     "structcheck",
     "stylecheck",
-    "testpackage",
+    # "testpackage",
     "thelper",
     "tparallel",
     "typecheck",
