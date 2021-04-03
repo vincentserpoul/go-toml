@@ -2,13 +2,17 @@ package toml
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:funlen
 func TestDecodeError(t *testing.T) {
+	t.Parallel()
+
 	examples := []struct {
 		desc     string
 		doc      [3]string
@@ -148,7 +152,9 @@ line 5`,
 	}
 
 	for _, e := range examples {
+		e := e
 		t.Run(e.desc, func(t *testing.T) {
+			t.Parallel()
 			b := bytes.Buffer{}
 			b.Write([]byte(e.doc[0]))
 			start := b.Len()
@@ -162,7 +168,14 @@ line 5`,
 				highlight: hl,
 				message:   e.msg,
 			})
-			derr := err.(*DecodeError)
+
+			var derr *DecodeError
+			if !errors.As(err, &derr) {
+				t.Errorf("error not in expected format")
+
+				return
+			}
+
 			assert.Equal(t, strings.Trim(e.expected, "\n"), derr.String())
 		})
 	}
