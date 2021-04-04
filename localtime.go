@@ -44,6 +44,7 @@ type LocalDate struct {
 func LocalDateOf(t time.Time) LocalDate {
 	var d LocalDate
 	d.Year, d.Month, d.Day = t.Date()
+
 	return d
 }
 
@@ -51,8 +52,9 @@ func LocalDateOf(t time.Time) LocalDate {
 func ParseLocalDate(s string) (LocalDate, error) {
 	t, err := time.Parse("2006-01-02", s)
 	if err != nil {
-		return LocalDate{}, err
+		return LocalDate{}, fmt.Errorf("ParseLocalDate: %w", err)
 	}
+
 	return LocalDateOf(t), nil
 }
 
@@ -86,29 +88,34 @@ func (d LocalDate) AddDays(n int) LocalDate {
 	return LocalDateOf(d.In(time.UTC).AddDate(0, 0, n))
 }
 
+const secondsInADay = 86400
+
 // DaysSince returns the signed number of days between the date and s, not including the end day.
 // This is the inverse operation to AddDays.
 func (d LocalDate) DaysSince(s LocalDate) (days int) {
 	// We convert to Unix time so we do not have to worry about leap seconds:
 	// Unix time increases by exactly 86400 seconds per day.
 	deltaUnix := d.In(time.UTC).Unix() - s.In(time.UTC).Unix()
-	return int(deltaUnix / 86400)
+
+	return int(deltaUnix / secondsInADay)
 }
 
 // Before reports whether d1 occurs before d2.
-func (d1 LocalDate) Before(d2 LocalDate) bool {
-	if d1.Year != d2.Year {
-		return d1.Year < d2.Year
+func (d LocalDate) Before(d2 LocalDate) bool {
+	if d.Year != d2.Year {
+		return d.Year < d2.Year
 	}
-	if d1.Month != d2.Month {
-		return d1.Month < d2.Month
+
+	if d.Month != d2.Month {
+		return d.Month < d2.Month
 	}
-	return d1.Day < d2.Day
+
+	return d.Day < d2.Day
 }
 
 // After reports whether d1 occurs after d2.
-func (d1 LocalDate) After(d2 LocalDate) bool {
-	return d2.Before(d1)
+func (d LocalDate) After(d2 LocalDate) bool {
+	return d2.Before(d)
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
@@ -122,6 +129,7 @@ func (d LocalDate) MarshalText() ([]byte, error) {
 func (d *LocalDate) UnmarshalText(data []byte) error {
 	var err error
 	*d, err = ParseLocalDate(string(data))
+
 	return err
 }
 
@@ -156,7 +164,7 @@ func LocalTimeOf(t time.Time) LocalTime {
 func ParseLocalTime(s string) (LocalTime, error) {
 	t, err := time.Parse("15:04:05.999999999", s)
 	if err != nil {
-		return LocalTime{}, err
+		return LocalTime{}, fmt.Errorf("ParseLocalTime: %w", err)
 	}
 	return LocalTimeOf(t), nil
 }
@@ -176,6 +184,7 @@ func (t LocalTime) String() string {
 func (t LocalTime) IsValid() bool {
 	// Construct a non-zero time.
 	tm := time.Date(2, 2, 2, t.Hour, t.Minute, t.Second, t.Nanosecond, time.UTC)
+
 	return LocalTimeOf(tm) == t
 }
 
@@ -223,7 +232,7 @@ func ParseLocalDateTime(s string) (LocalDateTime, error) {
 	if err != nil {
 		t, err = time.Parse("2006-01-02t15:04:05.999999999", s)
 		if err != nil {
-			return LocalDateTime{}, err
+			return LocalDateTime{}, fmt.Errorf("ParseLocalDateTime: %w", err)
 		}
 	}
 	return LocalDateTimeOf(t), nil
@@ -253,17 +262,21 @@ func (dt LocalDateTime) IsValid() bool {
 //
 // In panics if loc is nil.
 func (dt LocalDateTime) In(loc *time.Location) time.Time {
-	return time.Date(dt.Date.Year, dt.Date.Month, dt.Date.Day, dt.Time.Hour, dt.Time.Minute, dt.Time.Second, dt.Time.Nanosecond, loc)
+	return time.Date(
+		dt.Date.Year, dt.Date.Month, dt.Date.Day,
+		dt.Time.Hour, dt.Time.Minute, dt.Time.Second, dt.Time.Nanosecond,
+		loc,
+	)
 }
 
-// Before reports whether dt1 occurs before dt2.
-func (dt1 LocalDateTime) Before(dt2 LocalDateTime) bool {
-	return dt1.In(time.UTC).Before(dt2.In(time.UTC))
+// Before reports whether st occurs before dt2.
+func (dt LocalDateTime) Before(dt2 LocalDateTime) bool {
+	return dt.In(time.UTC).Before(dt2.In(time.UTC))
 }
 
-// After reports whether dt1 occurs after dt2.
-func (dt1 LocalDateTime) After(dt2 LocalDateTime) bool {
-	return dt2.Before(dt1)
+// After reports whether st occurs after dt2.
+func (dt LocalDateTime) After(dt2 LocalDateTime) bool {
+	return dt2.Before(dt)
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
