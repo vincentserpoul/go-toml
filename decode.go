@@ -229,6 +229,7 @@ var (
 	ErrParseFloatEndDot   = errors.New("float cannot end with a dot")
 )
 
+//nolint:cyclop
 func parseFloat(b []byte) (float64, error) {
 	//nolint:godox
 	// TODO: inefficient
@@ -237,7 +238,6 @@ func parseFloat(b []byte) (float64, error) {
 	}
 
 	tok := string(b)
-
 	if err := numberContainsInvalidUnderscore(tok); err != nil {
 		return 0, err
 	}
@@ -251,7 +251,12 @@ func parseFloat(b []byte) (float64, error) {
 		return 0, ErrParseFloatEndDot
 	}
 
-	return strconv.ParseFloat(cleanedVal, 64)
+	f, err := strconv.ParseFloat(cleanedVal, 64)
+	if err != nil {
+		return 0, fmt.Errorf("coudn't ParseFloat %w", err)
+	}
+
+	return f, nil
 }
 
 func parseIntHex(b []byte) (int64, error) {
@@ -262,7 +267,12 @@ func parseIntHex(b []byte) (int64, error) {
 		return 0, err
 	}
 
-	return strconv.ParseInt(cleanedVal[2:], 16, 64)
+	i, err := strconv.ParseInt(cleanedVal[2:], 16, 64)
+	if err != nil {
+		return 0, fmt.Errorf("coudn't ParseIntHex %w", err)
+	}
+
+	return i, nil
 }
 
 func parseIntOct(b []byte) (int64, error) {
@@ -273,7 +283,12 @@ func parseIntOct(b []byte) (int64, error) {
 		return 0, err
 	}
 
-	return strconv.ParseInt(cleanedVal[2:], 8, 64)
+	i, err := strconv.ParseInt(cleanedVal[2:], 8, 64)
+	if err != nil {
+		return 0, fmt.Errorf("coudn't ParseIntOct %w", err)
+	}
+
+	return i, nil
 }
 
 func parseIntBin(b []byte) (int64, error) {
@@ -284,7 +299,12 @@ func parseIntBin(b []byte) (int64, error) {
 		return 0, err
 	}
 
-	return strconv.ParseInt(cleanedVal[2:], 2, 64)
+	i, err := strconv.ParseInt(cleanedVal[2:], 2, 64)
+	if err != nil {
+		return 0, fmt.Errorf("coudn't ParseIntBin %w", err)
+	}
+
+	return i, nil
 }
 
 func parseIntDec(b []byte) (int64, error) {
@@ -295,7 +315,12 @@ func parseIntDec(b []byte) (int64, error) {
 		return 0, err
 	}
 
-	return strconv.ParseInt(cleanedVal, 10, 64)
+	i, err := strconv.ParseInt(cleanedVal, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("coudn't parseIntDec %w", err)
+	}
+
+	return i, nil
 }
 
 func numberContainsInvalidUnderscore(value string) error {
