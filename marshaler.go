@@ -18,10 +18,12 @@ import (
 func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := NewEncoder(&buf)
+
 	err := enc.Encode(v)
 	if err != nil {
 		return nil, err
 	}
+
 	return buf.Bytes(), nil
 }
 
@@ -96,7 +98,7 @@ func NewEncoder(w io.Writer) *Encoder {
 // 5. Intermediate tables are always printed.
 //
 // By default, strings are encoded as literal string, unless they contain either
-// a newline character or a single quote. In that case they are emited as quoted
+// a newline character or a single quote. In that case they are emitted as quoted
 // strings.
 //
 // When encoding structs, fields are encoded in order of definition, with their
@@ -108,24 +110,36 @@ func NewEncoder(w io.Writer) *Encoder {
 //   a quoted multi-line TOML string.
 func (enc *Encoder) Encode(v interface{}) error {
 	var b []byte
+
 	var ctx encoderCtx
+
 	b, err := enc.encode(b, ctx, reflect.ValueOf(v))
 	if err != nil {
-		return err
+		return fmt.Errorf("Encode: %w", err)
 	}
+
 	_, err = enc.w.Write(b)
-	return err
+	if err != nil {
+		return fmt.Errorf("Encode: %w", err)
+	}
+
+	return nil
 }
 
+var errUnsupportedValue = errors.New("unsupported encode value kind")
+
+//nolint:cyclop
 func (enc *Encoder) encode(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, error) {
-	switch i := v.Interface().(type) {
-	case time.Time: // TODO: add TextMarshaler
+	i, ok := v.Interface().(time.Time)
+	//nolint:godox
+	if ok { // TODO: add TextMarshaler
 		b = i.AppendFormat(b, time.RFC3339)
+
 		return b, nil
 	}
 
-	// containers
 	switch v.Kind() {
+	// containers
 	case reflect.Map:
 		return enc.encodeMap(b, ctx, v)
 	case reflect.Struct:
@@ -136,19 +150,18 @@ func (enc *Encoder) encode(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, e
 		if v.IsNil() {
 			return nil, errNilInterface
 		}
+
 		return enc.encode(b, ctx, v.Elem())
 	case reflect.Ptr:
 		if v.IsNil() {
 			return enc.encode(b, ctx, reflect.Zero(v.Type().Elem()))
 		}
+
 		return enc.encode(b, ctx, v.Elem())
-	}
 
 	// values
-	var err error
-	switch v.Kind() {
 	case reflect.String:
-		b, err = enc.encodeString(b, v.String(), ctx.options)
+		b = enc.encodeString(b, v.String(), ctx.options)
 	case reflect.Float32:
 		b = strconv.AppendFloat(b, v.Float(), 'f', -1, 32)
 	case reflect.Float64:
@@ -163,11 +176,9 @@ func (enc *Encoder) encode(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, e
 		b = strconv.AppendUint(b, v.Uint(), 10)
 	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
 		b = strconv.AppendInt(b, v.Int(), 10)
-	default:
-		err = fmt.Errorf("unsupported encode value kind: %s", v.Kind())
-	}
-	if err != nil {
-		return nil, err
+	case reflect.Array, reflect.Chan, reflect.Complex128, reflect.Complex64,
+		reflect.Func, reflect.Invalid, reflect.Uintptr, reflect.UnsafePointer:
+		return nil, fmt.Errorf("encode(type %s): %w", v.Kind(), errUnsupportedValue)
 	}
 
 	return b, nil
@@ -175,11 +186,17 @@ func (enc *Encoder) encode(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, e
 
 func isNil(v reflect.Value) bool {
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Interface, reflect.Map:
+	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Map, reflect.Slice:
 		return v.IsNil()
-	default:
+	case reflect.Array, reflect.Bool, reflect.Chan, reflect.Complex128,
+		reflect.Complex64, reflect.Float32, reflect.Float64, reflect.Func,
+		reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8,
+		reflect.Invalid, reflect.String, reflect.Struct, reflect.Uintptr, reflect.Uint, reflect.Uint16,
+		reflect.Uint32, reflect.Uint64, reflect.Uint8:
 		return false
 	}
+
+	return false
 }
 
 func (enc *Encoder) encodeKv(b []byte, ctx encoderCtx, options valueOptions, v reflect.Value) ([]byte, error) {
@@ -217,30 +234,32 @@ func (enc *Encoder) encodeKv(b []byte, ctx encoderCtx, options valueOptions, v r
 
 const literalQuote = '\''
 
-func (enc *Encoder) encodeString(b []byte, v string, options valueOptions) ([]byte, error) {
+func (enc *Encoder) encodeString(b []byte, v string, options valueOptions) []byte {
 	if needsQuoting(v) {
-		b = enc.encodeQuotedString(options.multiline, b, v)
-	} else {
-		b = enc.encodeLiteralString(b, v)
+		return enc.encodeQuotedString(options.multiline, b, v)
 	}
-	return b, nil
+
+	return enc.encodeLiteralString(b, v)
 }
 
 func needsQuoting(v string) bool {
 	return strings.ContainsAny(v, "'\b\f\n\r\t")
 }
 
-// caller should have checked that the string does not contain new lines or '
+// caller should have checked that the string does not contain new lines or "'".
 func (enc *Encoder) encodeLiteralString(b []byte, v string) []byte {
 	b = append(b, literalQuote)
 	b = append(b, v...)
 	b = append(b, literalQuote)
+
 	return b
 }
 
+//nolint:cyclop
 func (enc *Encoder) encodeQuotedString(multiline bool, b []byte, v string) []byte {
 	const hextable = "0123456789ABCDEF"
 	stringQuote := `"`
+
 	if multiline {
 		stringQuote = `"""`
 	}
@@ -249,6 +268,15 @@ func (enc *Encoder) encodeQuotedString(multiline bool, b []byte, v string) []byt
 	if multiline {
 		b = append(b, '\n')
 	}
+
+	const (
+		// U+0000 to U+0008, U+000A to U+001F, U+007F
+		nul = 0x0
+		bs  = 0x8
+		lf  = 0xa
+		us  = 0x1f
+		del = 0x7f
+	)
 
 	for _, r := range []byte(v) {
 		switch r {
@@ -272,7 +300,7 @@ func (enc *Encoder) encodeQuotedString(multiline bool, b []byte, v string) []byt
 			b = append(b, `\t`...)
 		default:
 			switch {
-			case r >= 0x0 && r <= 0x8, r >= 0xA && r <= 0x1F, r == 0x7F:
+			case r >= nul && r <= bs, r >= lf && r <= us, r == del:
 				b = append(b, `\u00`...)
 				b = append(b, hextable[r>>4])
 				b = append(b, hextable[r&0x0f])
@@ -280,14 +308,14 @@ func (enc *Encoder) encodeQuotedString(multiline bool, b []byte, v string) []byt
 				b = append(b, r)
 			}
 		}
-		// U+0000 to U+0008, U+000A to U+001F, U+007F
 	}
 
 	b = append(b, stringQuote...)
+
 	return b
 }
 
-// called should have checked that the string is in A-Z / a-z / 0-9 / - / _
+// called should have checked that the string is in "A-Z / a-z / 0-9 / - / " .
 func (enc *Encoder) encodeUnquotedKey(b []byte, v string) []byte {
 	return append(b, v...)
 }
@@ -300,6 +328,7 @@ func (enc *Encoder) encodeTableHeader(b []byte, key []string) ([]byte, error) {
 	b = append(b, '[')
 
 	var err error
+
 	b, err = enc.encodeKey(b, key[0])
 	if err != nil {
 		return nil, err
@@ -307,6 +336,7 @@ func (enc *Encoder) encodeTableHeader(b []byte, key []string) ([]byte, error) {
 
 	for _, k := range key[1:] {
 		b = append(b, '.')
+
 		b, err = enc.encodeKey(b, k)
 		if err != nil {
 			return nil, err
@@ -319,6 +349,25 @@ func (enc *Encoder) encodeTableHeader(b []byte, key []string) ([]byte, error) {
 }
 
 func (enc *Encoder) encodeKey(b []byte, k string) ([]byte, error) {
+	needsQuotation, cannotUseLiteral, err := quotationNotLiteral(k)
+	if err != nil {
+		return nil, fmt.Errorf("encodeKey: %w", err)
+	}
+
+	switch {
+	case cannotUseLiteral:
+		return enc.encodeQuotedString(false, b, k), nil
+	case needsQuotation:
+		return enc.encodeLiteralString(b, k), nil
+	default:
+		return enc.encodeUnquotedKey(b, k), nil
+	}
+}
+
+var errTomlNoMultiline = errors.New("TOML does not support multiline keys")
+
+//nolint:cyclop
+func quotationNotLiteral(k string) (bool, bool, error) {
 	needsQuotation := false
 	cannotUseLiteral := false
 
@@ -326,32 +375,31 @@ func (enc *Encoder) encodeKey(b []byte, k string) ([]byte, error) {
 		if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
 			continue
 		}
+
 		if c == '\n' {
-			return nil, fmt.Errorf("TOML does not support multiline keys")
+			return false, false, errTomlNoMultiline
 		}
+
 		if c == literalQuote {
 			cannotUseLiteral = true
 		}
+
 		needsQuotation = true
 	}
 
-	if cannotUseLiteral {
-		b = enc.encodeQuotedString(false, b, k)
-	} else if needsQuotation {
-		b = enc.encodeLiteralString(b, k)
-	} else {
-		b = enc.encodeUnquotedKey(b, k)
-	}
-
-	return b, nil
+	return needsQuotation, cannotUseLiteral, nil
 }
+
+var errNotSupportedAsMapKey = errors.New("type not supported as map key")
 
 func (enc *Encoder) encodeMap(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, error) {
 	if v.Type().Key().Kind() != reflect.String {
-		return nil, fmt.Errorf("type '%s' not supported as map key", v.Type().Key().Kind())
+		return nil, fmt.Errorf("encodeMap '%s': %w", v.Type().Key().Kind(), errNotSupportedAsMapKey)
 	}
 
-	t := table{}
+	var t table
+
+	var emptyValueOptions valueOptions
 
 	iter := v.MapRange()
 	for iter.Next() {
@@ -368,9 +416,9 @@ func (enc *Encoder) encodeMap(b []byte, ctx encoderCtx, v reflect.Value) ([]byte
 		}
 
 		if table {
-			t.pushTable(k, v, valueOptions{})
+			t.pushTable(k, v, emptyValueOptions)
 		} else {
-			t.pushKV(k, v, valueOptions{})
+			t.pushKV(k, v, emptyValueOptions)
 		}
 	}
 
@@ -405,13 +453,10 @@ func (t *table) pushTable(k string, v reflect.Value, options valueOptions) {
 	t.tables = append(t.tables, entry{Key: k, Value: v, Options: options})
 }
 
-func (t *table) hasKVs() bool {
-	return len(t.kvs) > 0
-}
-
 func (enc *Encoder) encodeStruct(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, error) {
-	t := table{}
+	var t table
 
+	//nolint:godox
 	// TODO: cache this?
 	typ := v.Type()
 	for i := 0; i < typ.NumField(); i++ {
@@ -443,7 +488,7 @@ func (enc *Encoder) encodeStruct(b []byte, ctx encoderCtx, v reflect.Value) ([]b
 			return nil, err
 		}
 
-		options := valueOptions{}
+		var options valueOptions
 
 		ml, ok := fieldType.Tag.Lookup("multiline")
 		if ok {
@@ -466,38 +511,7 @@ func (enc *Encoder) encodeTable(b []byte, ctx encoderCtx, t table) ([]byte, erro
 	ctx.shiftKey()
 
 	if ctx.insideKv {
-		b = append(b, '{')
-
-		first := true
-		for _, kv := range t.kvs {
-			if first {
-				first = false
-			} else {
-				b = append(b, `, `...)
-			}
-			ctx.setKey(kv.Key)
-			b, err = enc.encodeKv(b, ctx, kv.Options, kv.Value)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		for _, table := range t.tables {
-			if first {
-				first = false
-			} else {
-				b = append(b, `, `...)
-			}
-			ctx.setKey(table.Key)
-			b, err = enc.encode(b, ctx, table.Value)
-			if err != nil {
-				return nil, err
-			}
-			b = append(b, '\n')
-		}
-
-		b = append(b, "}\n"...)
-		return b, nil
+		return enc.decodeTableInsideKV(b, ctx, t)
 	}
 
 	if !ctx.skipTableHeader {
@@ -510,31 +524,77 @@ func (enc *Encoder) encodeTable(b []byte, ctx encoderCtx, t table) ([]byte, erro
 
 	for _, kv := range t.kvs {
 		ctx.setKey(kv.Key)
+
 		b, err = enc.encodeKv(b, ctx, kv.Options, kv.Value)
 		if err != nil {
 			return nil, err
 		}
+
 		b = append(b, '\n')
 	}
 
 	for _, table := range t.tables {
 		ctx.setKey(table.Key)
+
 		b, err = enc.encode(b, ctx, table.Value)
 		if err != nil {
 			return nil, err
 		}
+
 		b = append(b, '\n')
 	}
 
 	return b, nil
 }
 
+func (enc *Encoder) decodeTableInsideKV(b []byte, ctx encoderCtx, t table) ([]byte, error) {
+	var err error
+
+	b = append(b, '{')
+
+	first := true
+	for _, kv := range t.kvs {
+		if first {
+			first = false
+		} else {
+			b = append(b, `, `...)
+		}
+
+		ctx.setKey(kv.Key)
+
+		b, err = enc.encodeKv(b, ctx, kv.Options, kv.Value)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, table := range t.tables {
+		if first {
+			first = false
+		} else {
+			b = append(b, `, `...)
+		}
+
+		ctx.setKey(table.Key)
+
+		b, err = enc.encode(b, ctx, table.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		b = append(b, '\n')
+	}
+
+	b = append(b, "}\n"...)
+
+	return b, nil
+}
+
 var errNilInterface = errors.New("nil interface not supported")
-var errNilPointer = errors.New("nil pointer not supported")
 
 func willConvertToTable(v reflect.Value) (bool, error) {
-	switch v.Interface().(type) {
-	case time.Time: // TODO: add TextMarshaler
+	_, ok := v.Interface().(time.Time)
+	if ok {
 		return false, nil
 	}
 
@@ -546,15 +606,24 @@ func willConvertToTable(v reflect.Value) (bool, error) {
 		if v.IsNil() {
 			return false, errNilInterface
 		}
+
 		return willConvertToTable(v.Elem())
 	case reflect.Ptr:
 		if v.IsNil() {
 			return false, nil
 		}
+
 		return willConvertToTable(v.Elem())
-	default:
+	case reflect.Array, reflect.Bool, reflect.Chan, reflect.Complex128,
+		reflect.Complex64, reflect.Float32, reflect.Float64, reflect.Func,
+		reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8,
+		reflect.Invalid, reflect.String, reflect.Uint, reflect.Uint16,
+		reflect.Uint32, reflect.Uint64, reflect.Uint8, reflect.Uintptr, reflect.UnsafePointer,
+		reflect.Slice:
 		return false, nil
 	}
+
+	return false, nil
 }
 
 func willConvertToTableOrArrayTable(v reflect.Value) (bool, error) {
@@ -564,6 +633,7 @@ func willConvertToTableOrArrayTable(v reflect.Value) (bool, error) {
 		if v.IsNil() {
 			return false, errNilInterface
 		}
+
 		return willConvertToTableOrArrayTable(v.Elem())
 	}
 
@@ -572,15 +642,18 @@ func willConvertToTableOrArrayTable(v reflect.Value) (bool, error) {
 			// An empty slice should be a kv = [].
 			return false, nil
 		}
+
 		for i := 0; i < v.Len(); i++ {
 			t, err := willConvertToTable(v.Index(i))
 			if err != nil {
 				return false, err
 			}
+
 			if !t {
 				return false, nil
 			}
 		}
+
 		return true, nil
 	}
 
@@ -590,6 +663,7 @@ func willConvertToTableOrArrayTable(v reflect.Value) (bool, error) {
 func (enc *Encoder) encodeSlice(b []byte, ctx encoderCtx, v reflect.Value) ([]byte, error) {
 	if v.Len() == 0 {
 		b = append(b, "[]"...)
+
 		return b, nil
 	}
 
@@ -617,25 +691,30 @@ func (enc *Encoder) encodeSliceAsArrayTable(b []byte, ctx encoderCtx, v reflect.
 	var err error
 	scratch := make([]byte, 0, 64)
 	scratch = append(scratch, "[["...)
+
 	for i, k := range ctx.parentKey {
 		if i > 0 {
 			scratch = append(scratch, '.')
 		}
+
 		scratch, err = enc.encodeKey(scratch, k)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	scratch = append(scratch, "]]\n"...)
 	ctx.skipTableHeader = true
 
 	for i := 0; i < v.Len(); i++ {
 		b = append(b, scratch...)
+
 		b, err = enc.encode(b, ctx, v.Index(i))
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return b, nil
 }
 
@@ -644,6 +723,7 @@ func (enc *Encoder) encodeSliceAsArray(b []byte, ctx encoderCtx, v reflect.Value
 
 	var err error
 	first := true
+
 	for i := 0; i < v.Len(); i++ {
 		if !first {
 			b = append(b, ", "...)
@@ -657,5 +737,6 @@ func (enc *Encoder) encodeSliceAsArray(b []byte, ctx encoderCtx, v reflect.Value
 	}
 
 	b = append(b, ']')
+
 	return b, nil
 }

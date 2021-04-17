@@ -11,7 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:funlen
 func TestMarshal(t *testing.T) {
+	t.Parallel()
+
 	examples := []struct {
 		desc     string
 		v        interface{}
@@ -65,6 +68,7 @@ hello = 'world'`,
 a = 'test'`,
 		},
 		{
+			//nolint:godox
 			// TODO: this test is flaky because output changes depending on
 			//   the map iteration order.
 			desc: "map in map in map and string with values",
@@ -88,6 +92,11 @@ a = 'test'`,
 				"array": {"one", "two", "three"},
 			},
 			expected: `array = ['one', 'two', 'three']`,
+		},
+		{
+			desc:     "empty string array",
+			v:        map[string][]string{},
+			expected: ``,
 		},
 		{
 			desc: "nested string arrays",
@@ -237,7 +246,10 @@ world"""`,
 	}
 
 	for _, e := range examples {
+		e := e
 		t.Run(e.desc, func(t *testing.T) {
+			t.Parallel()
+
 			b, err := toml.Marshal(e.v)
 			if e.err {
 				require.Error(t, err)
@@ -256,6 +268,8 @@ func equalStringsIgnoreNewlines(t *testing.T, expected string, actual string) {
 }
 
 func TestIssue436(t *testing.T) {
+	t.Parallel()
+
 	data := []byte(`{"a": [ { "b": { "c": "d" } } ]}`)
 
 	var v interface{}
