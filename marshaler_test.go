@@ -87,30 +87,35 @@ also = 'that'
 a = 'test'`,
 		},
 		{
-			desc: "simple string array",
+			desc: "simple string slice",
 			v: map[string][]string{
-				"array": {"one", "two", "three"},
+				"slice": {"one", "two", "three"},
 			},
-			expected: `array = ['one', 'two', 'three']`,
+			expected: `slice = ['one', 'two', 'three']`,
 		},
 		{
-			desc:     "empty string array",
+			desc:     "empty string slice",
 			v:        map[string][]string{},
 			expected: ``,
 		},
 		{
-			desc: "nested string arrays",
-			v: map[string][][]string{
-				"array": {{"one", "two"}, {"three"}},
-			},
-			expected: `array = [['one', 'two'], ['three']]`,
+			desc:     "map",
+			v:        map[string][]string{},
+			expected: ``,
 		},
 		{
-			desc: "mixed strings and nested string arrays",
-			v: map[string][]interface{}{
-				"array": {"a string", []string{"one", "two"}, "last"},
+			desc: "nested string slices",
+			v: map[string][][]string{
+				"slice": {{"one", "two"}, {"three"}},
 			},
-			expected: `array = ['a string', ['one', 'two'], 'last']`,
+			expected: `slice = [['one', 'two'], ['three']]`,
+		},
+		{
+			desc: "mixed strings and nested string slices",
+			v: map[string][]interface{}{
+				"slice": {"a string", []string{"one", "two"}, "last"},
+			},
+			expected: `slice = ['a string', ['one', 'two'], 'last']`,
 		},
 		{
 			desc: "slice of maps",
