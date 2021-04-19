@@ -315,7 +315,7 @@ func (enc *Encoder) encodeQuotedString(multiline bool, b []byte, v string) []byt
 	return b
 }
 
-// called should have checked that the string is in "A-Z / a-z / 0-9 / - / " .
+// called should have checked that the string is in "A-Z / a-z / 0-9 / - / _" .
 func (enc *Encoder) encodeUnquotedKey(b []byte, v string) []byte {
 	return append(b, v...)
 }
@@ -397,9 +397,10 @@ func (enc *Encoder) encodeMap(b []byte, ctx encoderCtx, v reflect.Value) ([]byte
 		return nil, fmt.Errorf("encodeMap '%s': %w", v.Type().Key().Kind(), errNotSupportedAsMapKey)
 	}
 
-	var t table
-
-	var emptyValueOptions valueOptions
+	var (
+		t                 table
+		emptyValueOptions valueOptions
+	)
 
 	iter := v.MapRange()
 	for iter.Next() {
